@@ -65,8 +65,8 @@ Requires Python 3 (standard library only) and Claude Code history in
 
 ```bash
 git clone git@github.com:grillermo/claude-search.git ~/c/claude-search
-chmod +x ~/c/claude-search/claude-search
-ln -s ~/c/claude-search/claude-search ~/.local/bin/claude-search
+chmod +x ~/c/claude-search/claude-search.py
+ln -s ~/c/claude-search/claude-search.py ~/.local/bin/claude-search
 ```
 
 Make sure `~/.local/bin` is on your `PATH`.
