@@ -73,3 +73,36 @@ ln -s ~/c/claude-search/claude-search.py ~/.local/bin/claude-search
 ```
 
 Make sure `~/.local/bin` is on your `PATH`.
+
+## Web service
+
+The web service uses the repository's `python_env` environment. Start it from
+the repository root with:
+
+```bash
+./serve
+```
+
+If Flask is not already installed in `python_env`, `./serve` installs it from
+`requirements.txt` before starting the service. You can optionally choose the
+bind address and port:
+
+```bash
+./serve -b 127.0.0.1 -p 5050
+```
+
+By default, the service binds to `127.0.0.1` and is available only on the
+local machine. Changing `-b` can expose your local conversation history to
+other machines, so do so only when that exposure is intended.
+
+Open the displayed local address in a browser. Enter submits a search, and the
+search term is interpreted as a Python regular expression. Matching is
+case-insensitive by default; enable the **Case sensitive** checkbox for
+case-sensitive matching.
+
+The interface shows one result at a time. Use Previous and Next to navigate
+between results, or use the Left and Right arrow keys when the search field is
+not focused. The results area scrolls internally for long conversations. The
+resume command stays pinned at the bottom of the results area; it is copyable
+with the Copy button (and can be selected and copied manually if clipboard
+access is unavailable). Tailwind CSS is loaded from its public CDN.
