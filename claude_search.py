@@ -1,6 +1,7 @@
 """Search Claude conversation history."""
 
 import json
+import os
 import re
 import shlex
 import time
@@ -146,7 +147,22 @@ def scan_file(jsonl_path, pattern):
     return title, None
 
 
-def search(term, case_sensitive=False, projects_dir=None, now=None) -> list[SearchResult]:
+def path_matches_prefix(path, path_prefix):
+    """Return whether a path is the prefix or a descendant of the prefix."""
+    normalized_prefix = os.path.normpath(path_prefix)
+    try:
+        return os.path.commonpath((path, normalized_prefix)) == normalized_prefix
+    except ValueError:
+        return False
+
+
+def search(
+    term,
+    case_sensitive=False,
+    projects_dir=None,
+    now=None,
+    path_prefix=None,
+) -> list[SearchResult]:
     """Return newest-first SearchResult values for a user-message regex."""
     pattern = compile_pattern(term, case_sensitive=case_sensitive)
     if projects_dir is None:
@@ -161,6 +177,8 @@ def search(term, case_sensitive=False, projects_dir=None, now=None) -> list[Sear
         if not project_dir.is_dir():
             continue
         cwd = dir_to_path(project_dir.name)
+        if path_prefix and not path_matches_prefix(cwd, path_prefix):
+            continue
         for jsonl_file in project_dir.glob("*.jsonl"):
             title, match = scan_file(jsonl_file, pattern)
             if match is not None:

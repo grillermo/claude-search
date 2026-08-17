@@ -106,6 +106,48 @@ class SearchCoreTests(unittest.TestCase):
 
             self.assertEqual(search("needle", projects_dir=projects_dir), [])
 
+    def test_path_prefix_matches_exact_and_descendant_project_paths(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            projects_dir = Path(temp_dir)
+            write_transcript(projects_dir, "-tmp-app", "exact", ["needle"])
+            write_transcript(projects_dir, "-tmp-app-child", "descendant", ["needle"])
+            write_transcript(projects_dir, "-tmp-application", "similar", ["needle"])
+
+            results = search(
+                "needle",
+                projects_dir=projects_dir,
+                path_prefix="/tmp/app",
+            )
+
+            self.assertEqual(
+                {result.conv_id for result in results},
+                {"exact", "descendant"},
+            )
+
+    def test_empty_and_omitted_path_prefixes_have_the_same_results(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            projects_dir = Path(temp_dir)
+            write_transcript(projects_dir, "-tmp-app", "app", ["needle"])
+            write_transcript(projects_dir, "-tmp-other", "other", ["needle"])
+
+            omitted = search("needle", projects_dir=projects_dir)
+            empty = search("needle", projects_dir=projects_dir, path_prefix="")
+
+            self.assertEqual(empty, omitted)
+
+    def test_path_prefix_accepts_redundant_and_trailing_separators(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            projects_dir = Path(temp_dir)
+            write_transcript(projects_dir, "-tmp-app", "one", ["needle"])
+
+            results = search(
+                "needle",
+                projects_dir=projects_dir,
+                path_prefix="/tmp//app/",
+            )
+
+            self.assertEqual([result.conv_id for result in results], ["one"])
+
     def test_reports_missing_projects_directory(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             missing_projects_dir = Path(temp_dir) / "missing"
