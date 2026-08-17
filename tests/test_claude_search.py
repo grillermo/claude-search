@@ -1,4 +1,3 @@
-import importlib.util
 import json
 import os
 import subprocess
@@ -8,11 +7,10 @@ import time
 import unittest
 from pathlib import Path
 
+import claude_search
+
 
 SCRIPT = Path(__file__).parents[1] / "claude-search.py"
-SPEC = importlib.util.spec_from_file_location("claude_search", SCRIPT)
-claude_search = importlib.util.module_from_spec(SPEC)
-SPEC.loader.exec_module(claude_search)
 
 
 class TimeAgoTests(unittest.TestCase):
@@ -38,6 +36,16 @@ class TimeAgoTests(unittest.TestCase):
 
 
 class CliOutputTests(unittest.TestCase):
+    def test_invalid_regex_writes_error_and_exits_nonzero(self):
+        result = subprocess.run(
+            [sys.executable, str(SCRIPT), "["],
+            capture_output=True,
+            text=True,
+        )
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("Invalid regex:", result.stderr)
+
     def test_result_header_starts_with_relative_age_and_resume_command(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             projects_dir = Path(temp_dir) / ".claude" / "projects" / "-tmp"
