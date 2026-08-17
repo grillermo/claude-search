@@ -1,7 +1,6 @@
 import json
 import os
 import tempfile
-import time
 import unittest
 from pathlib import Path
 
@@ -10,6 +9,7 @@ from claude_search import (
     InvalidSearchTerm,
     ProjectsDirectoryNotFound,
     SearchResult,
+    compile_pattern,
     search,
     time_ago,
 )
@@ -49,10 +49,18 @@ class SearchCoreTests(unittest.TestCase):
             self.assertEqual(results[0].cwd, "/work")
             self.assertEqual(results[0].title, "needle in title")
             self.assertEqual(results[1].match, "needle appears later")
+            self.assertEqual(results[0].relative_date, "1 minute ago")
+            self.assertEqual(results[1].relative_date, "2 minutes ago")
             self.assertEqual(
                 results[0].resume_command,
                 "cd /work && claude --resume newer",
             )
+
+    def test_compile_pattern_controls_case_sensitivity(self):
+        self.assertIsNotNone(compile_pattern("needle").search("Needle"))
+        self.assertIsNone(
+            compile_pattern("needle", case_sensitive=True).search("Needle")
+        )
 
     def test_case_sensitive_flag_controls_matching(self):
         with tempfile.TemporaryDirectory() as temp_dir:
