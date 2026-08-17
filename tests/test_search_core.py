@@ -1,0 +1,129 @@
+import json
+import os
+import tempfile
+import time
+import unittest
+from pathlib import Path
+
+from claude_search import (
+    HighlightSegment,
+    InvalidSearchTerm,
+    ProjectsDirectoryNotFound,
+    SearchResult,
+    search,
+    time_ago,
+)
+
+
+def write_transcript(projects_dir, project_name, conversation_id, messages):
+    project_dir = projects_dir / project_name
+    project_dir.mkdir(parents=True, exist_ok=True)
+    path = project_dir / f"{conversation_id}.jsonl"
+    path.write_text(
+        "".join(
+            json.dumps({"type": "user", "message": {"content": message}}) + "\n"
+            for message in messages
+        )
+    )
+    return path
+
+
+class SearchCoreTests(unittest.TestCase):
+    def test_returns_newest_results_with_structured_fields(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            projects_dir = Path(temp_dir)
+            older = write_transcript(projects_dir, "-tmp", "older", [
+                "older title",
+                "needle appears later",
+            ])
+            newer = write_transcript(projects_dir, "-work", "newer", [
+                "needle in title",
+            ])
+            os.utime(older, (100, 100))
+            os.utime(newer, (200, 200))
+
+            results = search("needle", projects_dir=projects_dir, now=260)
+
+            self.assertEqual([result.conv_id for result in results], ["newer", "older"])
+            self.assertIsInstance(results[0], SearchResult)
+            self.assertEqual(results[0].cwd, "/work")
+            self.assertEqual(results[0].title, "needle in title")
+            self.assertEqual(results[1].match, "needle appears later")
+            self.assertEqual(
+                results[0].resume_command,
+                "cd /work && claude --resume newer",
+            )
+
+    def test_case_sensitive_flag_controls_matching(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            projects_dir = Path(temp_dir)
+            write_transcript(projects_dir, "-tmp", "one", ["Needle"])
+
+            self.assertEqual(len(search("needle", projects_dir=projects_dir)), 1)
+            self.assertEqual(
+                search("needle", case_sensitive=True, projects_dir=projects_dir),
+                [],
+            )
+
+    def test_result_contains_highlight_segments_without_html(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            projects_dir = Path(temp_dir)
+            write_transcript(projects_dir, "-tmp", "one", ["Find needle"])
+
+            result = search("needle", projects_dir=projects_dir)[0]
+
+            self.assertEqual(
+                result.title_segments,
+                (
+                    HighlightSegment("Find ", False),
+                    HighlightSegment("needle", True),
+                ),
+            )
+            self.assertNotIn(
+                "<", "".join(segment.text for segment in result.title_segments)
+            )
+
+    def test_rejects_empty_oversized_and_invalid_terms(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            projects_dir = Path(temp_dir)
+            for term in ("", "x" * 501, "["):
+                with self.subTest(term=term):
+                    with self.assertRaises(InvalidSearchTerm):
+                        search(term, projects_dir=projects_dir)
+
+    def test_reports_empty_results_when_nothing_matches(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            projects_dir = Path(temp_dir)
+            write_transcript(projects_dir, "-tmp", "one", ["different"])
+
+            self.assertEqual(search("needle", projects_dir=projects_dir), [])
+
+    def test_reports_missing_projects_directory(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            missing_projects_dir = Path(temp_dir) / "missing"
+            with self.assertRaises(ProjectsDirectoryNotFound):
+                search("needle", projects_dir=missing_projects_dir)
+
+    def test_preserves_time_ago_unit_boundaries(self):
+        cases = {
+            0: "just now",
+            59: "just now",
+            60: "1 minute ago",
+            119: "1 minute ago",
+            120: "2 minutes ago",
+            3600: "1 hour ago",
+            7200: "2 hours ago",
+            86400: "1 day ago",
+            172800: "2 days ago",
+            604800: "1 week ago",
+            1209600: "2 weeks ago",
+            2592000: "1 month ago",
+            5184000: "2 months ago",
+        }
+        for age, expected in cases.items():
+            with self.subTest(age=age):
+                self.assertEqual(time_ago(age), expected)
+
+
+if __name__ == "__main__":
+    unittest.main()
