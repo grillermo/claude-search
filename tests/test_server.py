@@ -1,4 +1,5 @@
 import json
+import subprocess
 import tempfile
 import unittest
 from pathlib import Path
@@ -119,6 +120,19 @@ class ServerTests(unittest.TestCase):
 
         self.assertEqual(args.bind, "0.0.0.0")
         self.assertEqual(args.port, 5050)
+
+    def test_serve_help_exits_without_starting_server(self):
+        repository = Path(__file__).resolve().parents[1]
+        result = subprocess.run(
+            [str(repository / "serve"), "--help"],
+            cwd=repository,
+            capture_output=True,
+            text=True,
+        )
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("--bind", result.stdout)
+        self.assertIn("--port", result.stdout)
 
 
 if __name__ == "__main__":

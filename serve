@@ -1,0 +1,16 @@
+#!/bin/sh
+set -eu
+
+ROOT=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+PYTHON="$ROOT/python_env/bin/python"
+
+if [ ! -x "$PYTHON" ]; then
+    echo "Missing Python environment: $PYTHON" >&2
+    exit 1
+fi
+
+if ! "$PYTHON" -c 'import flask' >/dev/null 2>&1; then
+    "$PYTHON" -m pip install -r "$ROOT/requirements.txt"
+fi
+
+exec "$PYTHON" "$ROOT/server.py" "$@"
