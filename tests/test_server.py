@@ -50,6 +50,25 @@ class ServerTests(unittest.TestCase):
             ],
         )
 
+    def test_search_api_filters_by_project_path_and_echoes_requested_path(self):
+        write_transcript(self.projects_dir, "-tmp-app", "exact", ["Find needle"])
+        write_transcript(
+            self.projects_dir,
+            "-tmp-application",
+            "prefixed",
+            ["Find needle"],
+        )
+
+        response = self.app.test_client().get(
+            "/api/search",
+            query_string={"term": "needle", "path": "/tmp/app/"},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.get_json()
+        self.assertEqual(payload["path"], "/tmp/app/")
+        self.assertEqual([result["conv_id"] for result in payload["results"]], ["exact"])
+
     def test_invalid_and_oversized_terms_return_json_400_errors(self):
         for term in ("[", "x" * 501):
             with self.subTest(term=term):
@@ -97,6 +116,8 @@ class ServerTests(unittest.TestCase):
         for required_markup in (
             "<form",
             'id="search-term"',
+            'id="project-path"',
+            'name="path"',
             'id="case-sensitive"',
             "Regular expressions are supported",
             'id="result-viewport"',

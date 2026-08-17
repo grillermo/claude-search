@@ -40,6 +40,7 @@ def create_app(projects_dir=None):
     @app.get("/api/search")
     def api_search():
         term = request.args.get("term", "")
+        path = request.args.get("path", "")
         case_sensitive = request.args.get("case_sensitive", "false").lower() in {
             "true",
             "1",
@@ -50,6 +51,7 @@ def create_app(projects_dir=None):
                 term,
                 case_sensitive=case_sensitive,
                 projects_dir=app.config["PROJECTS_DIR"],
+                path_prefix=path,
             )
         except InvalidSearchTerm as error:
             return jsonify({
@@ -72,6 +74,7 @@ def create_app(projects_dir=None):
 
         return jsonify({
             "term": term,
+            "path": path,
             "case_sensitive": case_sensitive,
             "results": [serialize_result(result) for result in results],
         })
