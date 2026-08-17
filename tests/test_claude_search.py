@@ -36,6 +36,48 @@ class TimeAgoTests(unittest.TestCase):
 
 
 class CliOutputTests(unittest.TestCase):
+    def test_no_arguments_usage_documents_path_option(self):
+        result = subprocess.run(
+            [sys.executable, str(SCRIPT)],
+            capture_output=True,
+            text=True,
+        )
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("--path PATH", result.stderr)
+
+    def test_path_option_limits_results_to_requested_project(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            projects_dir = Path(temp_dir) / ".claude" / "projects"
+            requested_project = projects_dir / "-tmp-project"
+            other_project = projects_dir / "-tmp-projectx"
+            requested_project.mkdir(parents=True)
+            other_project.mkdir()
+            for project, session_id in (
+                (requested_project, "requested-session"),
+                (other_project, "other-session"),
+            ):
+                (project / f"{session_id}.jsonl").write_text(
+                    json.dumps({
+                        "type": "user",
+                        "message": {"content": "Find needle"},
+                    })
+                    + "\n"
+                )
+
+            environment = os.environ.copy()
+            environment["HOME"] = temp_dir
+            result = subprocess.run(
+                [sys.executable, str(SCRIPT), "needle", "--path", "/tmp/project"],
+                check=True,
+                capture_output=True,
+                text=True,
+                env=environment,
+            )
+
+            self.assertIn("cd /tmp/project && claude --resume requested-session", result.stdout)
+            self.assertNotIn("other-session", result.stdout)
+
     def test_invalid_regex_writes_error_and_exits_nonzero(self):
         result = subprocess.run(
             [sys.executable, str(SCRIPT), "["],

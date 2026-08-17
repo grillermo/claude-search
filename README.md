@@ -18,7 +18,7 @@ common word from your global instructions would match nearly every session.
 ## Usage
 
 ```bash
-claude-search <term> [--case-sensitive]
+claude-search <term> [--case-sensitive] [--path PATH]
 ```
 
 `<term>` is a Python regular expression. Matching is case-insensitive unless
@@ -28,7 +28,13 @@ claude-search <term> [--case-sensitive]
 claude-search gworktree           # plain substring
 claude-search 'stripe|checkout'   # regex alternation
 claude-search Rails --case-sensitive
+claude-search needle --path /Users/you/c/project
 ```
+
+`--path` limits results to the literal project path and its descendants. For
+example, `--path /Users/you/c/project` matches `/Users/you/c/project` and
+`/Users/you/c/project/app`, but not the similarly prefixed
+`/Users/you/c/project-old`.
 
 ## Output
 

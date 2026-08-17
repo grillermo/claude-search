@@ -43,11 +43,24 @@ class Color:
 
 def main():
     if len(sys.argv) < 2:
-        print("Usage: shh <search_term> [--case-sensitive]", file=sys.stderr)
+        print(
+            "Usage: shh <search_term> [--case-sensitive] [--path PATH]",
+            file=sys.stderr,
+        )
         sys.exit(1)
 
     term = sys.argv[1]
     case_sensitive = "--case-sensitive" in sys.argv
+    path_prefix = None
+    if "--path" in sys.argv:
+        path_index = sys.argv.index("--path")
+        if path_index + 1 >= len(sys.argv) or sys.argv[path_index + 1].startswith("--"):
+            print(
+                "Usage: shh <search_term> [--case-sensitive] [--path PATH]",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+        path_prefix = sys.argv[path_index + 1]
     try:
         pattern = compile_pattern(term, case_sensitive=case_sensitive)
     except InvalidSearchTerm as error:
@@ -55,7 +68,11 @@ def main():
         sys.exit(1)
 
     try:
-        results = search(term, case_sensitive=case_sensitive)
+        results = search(
+            term,
+            case_sensitive=case_sensitive,
+            path_prefix=path_prefix,
+        )
     except ProjectsDirectoryNotFound:
         print("No projects directory found.", file=sys.stderr)
         sys.exit(1)
