@@ -88,6 +88,32 @@ class ServerTests(unittest.TestCase):
         self.assertEqual(response.get_json()["case_sensitive"], True)
         self.assertEqual(response.get_json()["results"], [])
 
+    def test_index_renders_the_search_interface_contract(self):
+        response = self.app.test_client().get("/")
+
+        self.assertEqual(response.status_code, 200)
+        page = response.get_data(as_text=True)
+        for required_markup in (
+            "<form",
+            'id="search-term"',
+            'id="case-sensitive"',
+            "Regular expressions are supported",
+            'id="result-viewport"',
+            'id="copy-command"',
+            'id="previous-result"',
+            'id="next-result"',
+            "https://cdn.tailwindcss.com",
+        ):
+            with self.subTest(required_markup=required_markup):
+                self.assertIn(required_markup, page)
+
+    def test_app_javascript_is_served_and_targets_the_search_api(self):
+        response = self.app.test_client().get("/static/app.js")
+        self.addCleanup(response.close)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("/api/search", response.get_data(as_text=True))
+
     def test_parse_args_supports_bind_and_port(self):
         args = parse_args(["-b", "0.0.0.0", "-p", "5050"])
 
