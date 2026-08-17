@@ -50,17 +50,18 @@ def main():
         sys.exit(1)
 
     term = sys.argv[1]
-    case_sensitive = "--case-sensitive" in sys.argv
+    option_args = sys.argv[2:]
+    case_sensitive = "--case-sensitive" in option_args
     path_prefix = None
-    if "--path" in sys.argv:
-        path_index = sys.argv.index("--path")
-        if path_index + 1 >= len(sys.argv) or sys.argv[path_index + 1].startswith("--"):
+    if "--path" in option_args:
+        path_index = option_args.index("--path")
+        if path_index + 1 >= len(option_args) or option_args[path_index + 1].startswith("--"):
             print(
                 "Usage: shh <search_term> [--case-sensitive] [--path PATH]",
                 file=sys.stderr,
             )
             sys.exit(1)
-        path_prefix = sys.argv[path_index + 1]
+        path_prefix = option_args[path_index + 1]
     try:
         pattern = compile_pattern(term, case_sensitive=case_sensitive)
     except InvalidSearchTerm as error:

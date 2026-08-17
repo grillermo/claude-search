@@ -15,15 +15,16 @@ from claude_search import (
 )
 
 
-def write_transcript(projects_dir, project_name, conversation_id, messages):
+def write_transcript(projects_dir, project_name, conversation_id, messages, cwd=None):
     project_dir = projects_dir / project_name
     project_dir.mkdir(parents=True, exist_ok=True)
     path = project_dir / f"{conversation_id}.jsonl"
     path.write_text(
-        "".join(
-            json.dumps({"type": "user", "message": {"content": message}}) + "\n"
-            for message in messages
-        )
+        "".join(json.dumps({
+            "type": "user",
+            "message": {"content": message},
+            **({"cwd": cwd} if cwd is not None else {}),
+        }) + "\n" for message in messages)
     )
     return path
 
@@ -147,6 +148,34 @@ class SearchCoreTests(unittest.TestCase):
             )
 
             self.assertEqual([result.conv_id for result in results], ["one"])
+
+    def test_path_prefix_uses_transcript_cwd_over_lossy_directory_name(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            projects_dir = Path(temp_dir)
+            write_transcript(
+                projects_dir,
+                "-tmp-project-old",
+                "old",
+                ["needle"],
+                cwd="/tmp/project-old",
+            )
+
+            self.assertEqual(
+                search("needle", projects_dir=projects_dir, path_prefix="/tmp/project"),
+                [],
+            )
+
+            results = search(
+                "needle",
+                projects_dir=projects_dir,
+                path_prefix="/tmp/project-old",
+            )
+
+            self.assertEqual([result.cwd for result in results], ["/tmp/project-old"])
+            self.assertEqual(
+                results[0].resume_command,
+                "cd /tmp/project-old && claude --resume old",
+            )
 
     def test_reports_missing_projects_directory(self):
         with tempfile.TemporaryDirectory() as temp_dir:

@@ -78,6 +78,31 @@ class CliOutputTests(unittest.TestCase):
             self.assertIn("cd /tmp/project && claude --resume requested-session", result.stdout)
             self.assertNotIn("other-session", result.stdout)
 
+    def test_literal_path_search_term_is_not_parsed_as_a_path_option(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            project_dir = Path(temp_dir) / ".claude" / "projects" / "-tmp"
+            project_dir.mkdir(parents=True)
+            (project_dir / "session.jsonl").write_text(
+                json.dumps({
+                    "type": "user",
+                    "message": {"content": "Search for --path literally"},
+                })
+                + "\n"
+            )
+
+            environment = os.environ.copy()
+            environment["HOME"] = temp_dir
+            result = subprocess.run(
+                [sys.executable, str(SCRIPT), "--path"],
+                capture_output=True,
+                text=True,
+                env=environment,
+            )
+
+            self.assertEqual(result.returncode, 0)
+            self.assertIn("Search for --path literally", result.stdout)
+            self.assertNotIn("Usage:", result.stderr)
+
     def test_invalid_regex_writes_error_and_exits_nonzero(self):
         result = subprocess.run(
             [sys.executable, str(SCRIPT), "["],

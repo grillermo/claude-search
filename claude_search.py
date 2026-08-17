@@ -147,6 +147,23 @@ def scan_file(jsonl_path, pattern):
     return title, None
 
 
+def transcript_cwd(jsonl_path):
+    """Return top-level transcript cwd metadata when it is available."""
+    try:
+        with open(jsonl_path, errors="replace") as file:
+            for line in file:
+                try:
+                    obj = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                cwd = obj.get("cwd")
+                if isinstance(cwd, str):
+                    return cwd
+    except (IOError, OSError):
+        pass
+    return None
+
+
 def path_matches_prefix(path, path_prefix):
     """Return whether a path is the prefix or a descendant of the prefix."""
     normalized_prefix = os.path.normpath(path_prefix)
@@ -176,10 +193,13 @@ def search(
     for project_dir in sorted(projects_dir.iterdir()):
         if not project_dir.is_dir():
             continue
-        cwd = dir_to_path(project_dir.name)
-        if path_prefix and not path_matches_prefix(cwd, path_prefix):
-            continue
+        decoded_cwd = dir_to_path(project_dir.name)
         for jsonl_file in project_dir.glob("*.jsonl"):
+            cwd = transcript_cwd(jsonl_file)
+            if cwd is None:
+                cwd = decoded_cwd
+            if path_prefix and not path_matches_prefix(cwd, path_prefix):
+                continue
             title, match = scan_file(jsonl_file, pattern)
             if match is not None:
                 matches.append((
