@@ -96,9 +96,9 @@ local machine. Changing `-b` can expose your local conversation history to
 other machines, so do so only when that exposure is intended.
 
 Open the displayed local address in a browser. Enter submits a search, and the
-search term is interpreted as a Python regular expression. Matching is
-case-insensitive by default; enable the **Case sensitive** checkbox for
-case-sensitive matching.
+search term is interpreted as a Python regular expression. Search terms can be
+at most 500 characters long. Matching is case-insensitive by default; enable
+the **Case sensitive** checkbox for case-sensitive matching.
 
 The interface shows one result at a time. Use Previous and Next to navigate
 between results, or use the Left and Right arrow keys when the search field is
