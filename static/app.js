@@ -7,6 +7,7 @@ let latestSearchId = 0;
 
 const searchForm = document.querySelector("#search-form");
 const searchInput = document.querySelector("#search-term");
+const projectPathInput = document.querySelector("#project-path");
 const caseSensitiveInput = document.querySelector("#case-sensitive");
 const resultStatus = document.querySelector("#result-status");
 const resultViewport = document.querySelector("#result-viewport");
@@ -150,8 +151,9 @@ async function searchHistory(event) {
 
   try {
     const caseSensitive = caseSensitiveInput.checked ? "true" : "false";
+    const projectPath = projectPathInput.value;
     const response = await fetch(
-      `/api/search?term=${encodeURIComponent(term)}&case_sensitive=${caseSensitive}`,
+      `/api/search?term=${encodeURIComponent(term)}&case_sensitive=${caseSensitive}&path=${encodeURIComponent(projectPath)}`,
     );
     const payload = await response.json();
 

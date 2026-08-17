@@ -101,6 +101,7 @@ class FakeElement {
 const elementIds = [
   "search-form",
   "search-term",
+  "project-path",
   "case-sensitive",
   "result-status",
   "result-viewport",
@@ -233,8 +234,8 @@ test("latest search response wins when requests finish out of order", async () =
   assert.deepEqual(
     pending.map((request) => request.url),
     [
-      "/api/search?term=first%20&case_sensitive=false",
-      "/api/search?term=second%20&case_sensitive=false",
+      "/api/search?term=first%20&case_sensitive=false&path=",
+      "/api/search?term=second%20&case_sensitive=false&path=",
     ],
   );
   pending[1].resolve(makeResponse([makeResult("second result")]));
@@ -243,6 +244,26 @@ test("latest search response wins when requests finish out of order", async () =
   await firstSearch;
 
   assert.equal(elements["result-title"].textContent, "second result");
+});
+
+test("search requests encode the project path", async () => {
+  let requestUrl;
+  const app = loadApp({
+    fetch: async (url) => {
+      requestUrl = url;
+      return makeResponse([]);
+    },
+  });
+  const { elements } = app;
+
+  elements["search-term"].value = "term";
+  elements["project-path"].value = "projects/my project?draft";
+  await elements["search-form"].dispatch("submit");
+
+  assert.equal(
+    requestUrl,
+    "/api/search?term=term&case_sensitive=false&path=projects%2Fmy%20project%3Fdraft",
+  );
 });
 
 test("rendering a different result resets the result viewport scroll position", async () => {
