@@ -35,10 +35,10 @@ claude-search Rails --case-sensitive
 ```
 Found 2 conversation(s) matching 'gworktree':
 
-1. cd /Users/you/c/zsh && claude --resume bae8d4b3-ec79-4a23-8903-f9541b452074
+1. 2 weeks ago · cd /Users/you/c/zsh && claude --resume bae8d4b3-ec79-4a23-8903-f9541b452074
    I want a function called gworktree {name} to create or jump into a .worktrees/{name}
 
-2. cd /Users/you/c/datacenters && claude --resume abe8114a-9bb1-46bd-8aec-b8ca705705fb
+2. 1 month ago · cd /Users/you/c/datacenters && claude --resume abe8114a-9bb1-46bd-8aec-b8ca705705fb
    set up the new deploy pipeline
 
    > can you run gworktree on the release branch first?
@@ -46,15 +46,18 @@ Found 2 conversation(s) matching 'gworktree':
 
 Each result is:
 
-- **A bold header line** — the exact command to resume that session in the right
-  working directory. Copy, paste, done. The path is shell-quoted.
+- **A bold header line** — how long ago the session was modified, followed by
+  the exact command to resume it in the right working directory. Copy, paste,
+  done. The path is shell-quoted.
 - **The conversation's first message**, in full — no truncation, multi-line
   messages keep their line breaks.
 - **The first matching message**, prefixed with a yellow `>`, shown only when the
   match is somewhere later in the conversation rather than in the first message.
 
 The search term is highlighted wherever it appears, in either block. Results are
-sorted newest first by transcript modification time.
+sorted newest first by transcript modification time. Relative ages are shown as
+`just now`, minutes, hours, days, weeks, or months; months use a 30-day
+approximation.
 
 Color is disabled automatically when output is piped, or when `NO_COLOR` is set.
 

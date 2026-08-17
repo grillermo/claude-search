@@ -3,9 +3,10 @@
 
 import json
 import os
+import re
 import shlex
 import sys
-import re
+import time
 from pathlib import Path
 
 
@@ -53,6 +54,22 @@ class Color:
         if not self.enabled:
             return text
         return pattern.sub(lambda m: self.paint(m.group(0), self.MATCH), text)
+
+
+def time_ago(age_seconds):
+    """Return a compact human-readable age for a duration in seconds."""
+    units = (
+        (30 * 24 * 60 * 60, "month"),
+        (7 * 24 * 60 * 60, "week"),
+        (24 * 60 * 60, "day"),
+        (60 * 60, "hour"),
+        (60, "minute"),
+    )
+    for seconds, name in units:
+        if age_seconds >= seconds:
+            count = int(age_seconds // seconds)
+            return f"{count} {name}{'' if count == 1 else 's'} ago"
+    return "just now"
 
 
 SYSTEM_REMINDER = re.compile(r"<system-reminder>.*?</system-reminder>", re.DOTALL)
@@ -159,7 +176,8 @@ def main():
 
     print(f"Found {len(results)} conversation(s) matching '{color.highlight(term, pattern)}':\n")
     for i, (mtime, cwd, conv_id, title, match) in enumerate(results, 1):
-        print(color.bold(f"{i}. cd {shlex.quote(cwd)} && claude --resume {conv_id}"))
+        relative_date = time_ago(time.time() - mtime)
+        print(color.bold(f"{i}. {relative_date} · cd {shlex.quote(cwd)} && claude --resume {conv_id}"))
         show(title or "(no title)", "   ")
         if match != title:
             print()
