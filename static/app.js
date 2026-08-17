@@ -3,11 +3,13 @@ const state = {
   index: 0,
   loading: false,
 };
+let latestSearchId = 0;
 
 const searchForm = document.querySelector("#search-form");
 const searchInput = document.querySelector("#search-term");
 const caseSensitiveInput = document.querySelector("#case-sensitive");
 const resultStatus = document.querySelector("#result-status");
+const resultViewport = document.querySelector("#result-viewport");
 const resultContent = document.querySelector("#result-content");
 const relativeDate = document.querySelector("#result-relative-date");
 const projectPath = document.querySelector("#result-project-path");
@@ -50,6 +52,10 @@ function setStatus(message) {
   resultStatus.classList.toggle("hidden", message === "");
 }
 
+function resetResultViewport() {
+  resultViewport.scrollTop = 0;
+}
+
 function renderNavigation() {
   const hasResults = state.results.length > 0;
   navigation.classList.toggle("hidden", !hasResults);
@@ -62,6 +68,7 @@ function renderNavigation() {
 }
 
 function showResult(index) {
+  resetResultViewport();
   if (!state.results.length) {
     resultContent.classList.add("hidden");
     resumeCommand.classList.add("hidden");
@@ -90,6 +97,7 @@ function showResult(index) {
 }
 
 function renderMessage(message) {
+  resetResultViewport();
   resultContent.classList.add("hidden");
   resumeCommand.classList.add("hidden");
   setStatus(message);
@@ -125,10 +133,12 @@ async function copyResumeCommand() {
 
 async function searchHistory(event) {
   event.preventDefault();
+  const searchId = ++latestSearchId;
   const term = searchInput.value;
   if (term.trim() === "") {
     state.results = [];
     state.index = 0;
+    state.loading = false;
     renderMessage("Enter a search term.");
     return;
   }
@@ -145,6 +155,10 @@ async function searchHistory(event) {
     );
     const payload = await response.json();
 
+    if (searchId !== latestSearchId) {
+      return;
+    }
+
     if (!response.ok) {
       renderMessage(payload.error?.message || "Search request could not be completed.");
       return;
@@ -160,9 +174,13 @@ async function searchHistory(event) {
     setStatus("");
     showResult(0);
   } catch (_error) {
-    renderMessage("Search failed unexpectedly.");
+    if (searchId === latestSearchId) {
+      renderMessage("Search failed unexpectedly.");
+    }
   } finally {
-    state.loading = false;
+    if (searchId === latestSearchId) {
+      state.loading = false;
+    }
   }
 }
 
