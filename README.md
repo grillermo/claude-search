@@ -7,6 +7,41 @@ Claude Code stores each session as a JSONL transcript under
 `~/.claude/projects/<encoded-cwd>/<session-id>.jsonl`. `claude-search` walks all
 of them and looks for your search term.
 
+It comes as a CLI and as a local web page.
+
+## The web page
+
+![The claude-search web interface: a search field, a project path filter, case-sensitive and search-all-conversation checkboxes, one full result with the term highlighted, and the resume command pinned at the bottom](docs/web-search.png)
+
+```bash
+./serve
+```
+
+Then open the printed local address. What you get:
+
+- **One result at a time, in full.** The message is shown whole — no snippet, no
+  ellipsis — so you can actually recognise the conversation. Every occurrence of
+  the term is highlighted.
+- **Regex search.** The field takes a Python regular expression, so
+  `stripe|checkout` and `^deploy` work. Enter submits.
+- **A project path filter.** Type `/Users/you/c/project` to see only that
+  project and its subdirectories. Similarly named siblings like
+  `project-old` are not included.
+- **Case sensitive** — off by default.
+- **Search all conversation** — also searches Claude's replies, not just your
+  own messages. Tool output, thinking, and injected metadata stay out either
+  way.
+- **Header context.** How long ago the session was touched, and which directory
+  it belongs to.
+- **A pinned resume command.** `cd <project> && claude --resume <session-id>`
+  stays at the bottom of the result while you scroll, with a Copy button. Paste
+  it and you are back in that conversation.
+- **Keyboard navigation.** Previous / Next buttons, or the Left and Right arrow
+  keys when the search field is not focused, with a `Result 3 of 12` counter.
+
+It binds to `127.0.0.1` — your history never leaves the machine. See
+[Web service](#web-service) for the options.
+
 ## What it searches
 
 **By default, only messages you actually typed.** Transcripts contain a lot of
