@@ -103,8 +103,13 @@ def highlight_segments(text, pattern):
     return tuple(segments)
 
 
-def user_texts(jsonl_path):
-    """Yield text the user actually typed, in order."""
+def message_texts(jsonl_path, include_assistant=False):
+    """Yield (role, text) pairs for message prose, in transcript order.
+
+    User text is what the user actually typed; assistant text is Claude's
+    replies. Tool calls, tool results, and thinking blocks are never yielded.
+    """
+    roles = {"user", "assistant"} if include_assistant else {"user"}
     try:
         with open(jsonl_path, errors="replace") as file:
             for line in file:
@@ -115,7 +120,8 @@ def user_texts(jsonl_path):
                     obj = json.loads(line)
                 except json.JSONDecodeError:
                     continue
-                if obj.get("type") != "user" or obj.get("isMeta"):
+                role = obj.get("type")
+                if role not in roles or obj.get("isMeta"):
                     continue
                 content = obj.get("message", {}).get("content", "")
                 if isinstance(content, str):
@@ -131,20 +137,31 @@ def user_texts(jsonl_path):
                 for block in blocks:
                     text = SYSTEM_REMINDER.sub("", block).strip()
                     if text and not text.startswith("<local-command"):
-                        yield text
+                        yield role, text
     except (IOError, OSError):
         pass
 
 
-def scan_file(jsonl_path, pattern):
-    """Return the first user message and its first matching user message."""
+def user_texts(jsonl_path):
+    """Yield text the user actually typed, in order."""
+    for _role, text in message_texts(jsonl_path):
+        yield text
+
+
+def scan_file(jsonl_path, pattern, include_assistant=False):
+    """Return the first user message and the first matching message."""
     title = None
-    for text in user_texts(jsonl_path):
-        if title is None:
+    match = None
+    for role, text in message_texts(jsonl_path, include_assistant=include_assistant):
+        if title is None and role == "user":
             title = text
-        if pattern.search(text):
-            return title, text
-    return title, None
+        if match is None and pattern.search(text):
+            match = text
+        if title is not None and match is not None:
+            break
+    if title is None:
+        title = match
+    return title, match
 
 
 def transcript_cwd(jsonl_path):
@@ -179,8 +196,13 @@ def search(
     projects_dir=None,
     now=None,
     path_prefix=None,
+    include_assistant=False,
 ) -> list[SearchResult]:
-    """Return newest-first SearchResult values for a user-message regex."""
+    """Return newest-first SearchResult values for a message regex.
+
+    By default only user messages are searched; include_assistant also searches
+    Claude's text replies.
+    """
     pattern = compile_pattern(term, case_sensitive=case_sensitive)
     if projects_dir is None:
         projects_dir = Path.home() / ".claude" / "projects"
@@ -200,7 +222,9 @@ def search(
                 cwd = decoded_cwd
             if path_prefix and not path_matches_prefix(cwd, path_prefix):
                 continue
-            title, match = scan_file(jsonl_file, pattern)
+            title, match = scan_file(
+                jsonl_file, pattern, include_assistant=include_assistant
+            )
             if match is not None:
                 matches.append((
                     jsonl_file.stat().st_mtime,

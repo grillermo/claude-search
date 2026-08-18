@@ -103,6 +103,7 @@ const elementIds = [
   "search-term",
   "project-path",
   "case-sensitive",
+  "include-assistant",
   "result-status",
   "result-viewport",
   "result-content",
@@ -234,8 +235,8 @@ test("latest search response wins when requests finish out of order", async () =
   assert.deepEqual(
     pending.map((request) => request.url),
     [
-      "/api/search?term=first%20&case_sensitive=false&path=",
-      "/api/search?term=second%20&case_sensitive=false&path=",
+      "/api/search?term=first%20&case_sensitive=false&include_assistant=false&path=",
+      "/api/search?term=second%20&case_sensitive=false&include_assistant=false&path=",
     ],
   );
   pending[1].resolve(makeResponse([makeResult("second result")]));
@@ -262,7 +263,7 @@ test("search requests encode the project path", async () => {
 
   assert.equal(
     requestUrl,
-    "/api/search?term=term&case_sensitive=false&path=projects%2Fmy%20project%3Fdraft",
+    "/api/search?term=term&case_sensitive=false&include_assistant=false&path=projects%2Fmy%20project%3Fdraft",
   );
 });
 

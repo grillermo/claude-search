@@ -108,6 +108,34 @@ class ServerTests(unittest.TestCase):
         self.assertEqual(response.get_json()["case_sensitive"], True)
         self.assertEqual(response.get_json()["results"], [])
 
+    def test_include_assistant_true_is_passed_to_shared_search(self):
+        project_dir = self.projects_dir / "-tmp"
+        project_dir.mkdir(parents=True)
+        (project_dir / "one.jsonl").write_text(
+            json.dumps({"type": "user", "message": {"content": "hello"}})
+            + "\n"
+            + json.dumps({"type": "assistant", "message": {"content": [
+                {"type": "text", "text": "the needle is here"}
+            ]}})
+            + "\n"
+        )
+
+        client = self.app.test_client()
+
+        default = client.get("/api/search?term=needle")
+        self.assertEqual(default.get_json()["include_assistant"], False)
+        self.assertEqual(default.get_json()["results"], [])
+
+        response = client.get("/api/search?term=needle&include_assistant=true")
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.get_json()
+        self.assertEqual(payload["include_assistant"], True)
+        self.assertEqual(
+            [result["match"] for result in payload["results"]],
+            ["the needle is here"],
+        )
+
     def test_index_renders_the_search_interface_contract(self):
         response = self.app.test_client().get("/")
 
@@ -119,6 +147,7 @@ class ServerTests(unittest.TestCase):
             'id="project-path"',
             'name="path"',
             'id="case-sensitive"',
+            'id="include-assistant"',
             "Regular expressions are supported",
             'id="result-viewport"',
             'id="copy-command"',

@@ -9,16 +9,22 @@ of them and looks for your search term.
 
 ## What it searches
 
-**Only messages you actually typed.** Transcripts contain a lot of text you did
-not write — tool results, injected `<system-reminder>` blocks (your `CLAUDE.md`
-lands in every session this way), and local-command output. All of that is
-skipped, so a hit always corresponds to something you said. Without this, a
-common word from your global instructions would match nearly every session.
+**By default, only messages you actually typed.** Transcripts contain a lot of
+text you did not write — tool results, injected `<system-reminder>` blocks (your
+`CLAUDE.md` lands in every session this way), and local-command output. All of
+that is skipped, so a hit always corresponds to something you said. Without
+this, a common word from your global instructions would match nearly every
+session.
+
+`--all` widens the search to Claude's text replies as well. Tool calls, tool
+results, thinking blocks, and metadata stay excluded — only the prose Claude
+actually wrote to you is added. The title of each result is still the
+conversation's first user message.
 
 ## Usage
 
 ```bash
-claude-search <term> [--case-sensitive] [--path PATH]
+claude-search <term> [--case-sensitive] [--all] [--path PATH]
 ```
 
 `<term>` is a Python regular expression. Matching is case-insensitive unless
@@ -29,6 +35,7 @@ claude-search gworktree           # plain substring
 claude-search 'stripe|checkout'   # regex alternation
 claude-search Rails --case-sensitive
 claude-search needle --path /Users/you/c/project
+claude-search 'race condition' --all   # also search Claude's replies
 ```
 
 `--path` limits results to the literal project path and its descendants. For
@@ -104,7 +111,9 @@ other machines, so do so only when that exposure is intended.
 Open the displayed local address in a browser. Enter submits a search, and the
 search term is interpreted as a Python regular expression. Search terms can be
 at most 500 characters long. Matching is case-insensitive by default; enable
-the **Case sensitive** checkbox for case-sensitive matching.
+the **Case sensitive** checkbox for case-sensitive matching. The **Search all
+conversation** checkbox is the web equivalent of `--all`: it also searches
+Claude's text replies, not just your own messages.
 
 The interface shows one result at a time. Use Previous and Next to navigate
 between results, or use the Left and Right arrow keys when the search field is

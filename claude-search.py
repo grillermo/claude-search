@@ -44,7 +44,7 @@ class Color:
 def main():
     if len(sys.argv) < 2:
         print(
-            "Usage: shh <search_term> [--case-sensitive] [--path PATH]",
+            "Usage: shh <search_term> [--case-sensitive] [--all] [--path PATH]",
             file=sys.stderr,
         )
         sys.exit(1)
@@ -52,12 +52,13 @@ def main():
     term = sys.argv[1]
     option_args = sys.argv[2:]
     case_sensitive = "--case-sensitive" in option_args
+    include_assistant = "--all" in option_args
     path_prefix = None
     if "--path" in option_args:
         path_index = option_args.index("--path")
         if path_index + 1 >= len(option_args) or option_args[path_index + 1].startswith("--"):
             print(
-                "Usage: shh <search_term> [--case-sensitive] [--path PATH]",
+                "Usage: shh <search_term> [--case-sensitive] [--all] [--path PATH]",
                 file=sys.stderr,
             )
             sys.exit(1)
@@ -73,6 +74,7 @@ def main():
             term,
             case_sensitive=case_sensitive,
             path_prefix=path_prefix,
+            include_assistant=include_assistant,
         )
     except ProjectsDirectoryNotFound:
         print("No projects directory found.", file=sys.stderr)

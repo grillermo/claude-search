@@ -45,6 +45,35 @@ class CliOutputTests(unittest.TestCase):
 
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("--path PATH", result.stderr)
+        self.assertIn("--all", result.stderr)
+
+    def test_all_option_searches_assistant_replies(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            project_dir = Path(temp_dir) / ".claude" / "projects" / "-tmp-project"
+            project_dir.mkdir(parents=True)
+            (project_dir / "session.jsonl").write_text(
+                json.dumps({"type": "user", "message": {"content": "a question"}})
+                + "\n"
+                + json.dumps({"type": "assistant", "message": {"content": [
+                    {"type": "text", "text": "the needle is here"},
+                ]}})
+                + "\n"
+            )
+
+            environment = os.environ.copy()
+            environment["HOME"] = temp_dir
+
+            def run(*options):
+                return subprocess.run(
+                    [sys.executable, str(SCRIPT), "needle", *options],
+                    check=True,
+                    capture_output=True,
+                    text=True,
+                    env=environment,
+                )
+
+            self.assertIn("No conversations found", run().stdout)
+            self.assertIn("the needle is here", run("--all").stdout)
 
     def test_path_option_limits_results_to_requested_project(self):
         with tempfile.TemporaryDirectory() as temp_dir:

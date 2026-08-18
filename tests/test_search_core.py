@@ -15,6 +15,18 @@ from claude_search import (
 )
 
 
+def write_entries(projects_dir, project_name, conversation_id, entries):
+    project_dir = projects_dir / project_name
+    project_dir.mkdir(parents=True, exist_ok=True)
+    path = project_dir / f"{conversation_id}.jsonl"
+    path.write_text("".join(json.dumps(entry) + "\n" for entry in entries))
+    return path
+
+
+def assistant_entry(*blocks):
+    return {"type": "assistant", "message": {"content": list(blocks)}}
+
+
 def write_transcript(projects_dir, project_name, conversation_id, messages, cwd=None):
     project_dir = projects_dir / project_name
     project_dir.mkdir(parents=True, exist_ok=True)
@@ -176,6 +188,70 @@ class SearchCoreTests(unittest.TestCase):
                 results[0].resume_command,
                 "cd /tmp/project-old && claude --resume old",
             )
+
+    def test_include_assistant_searches_claude_text_replies(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            projects_dir = Path(temp_dir)
+            write_entries(projects_dir, "-tmp", "one", [
+                {"type": "user", "message": {"content": "first question"}},
+                assistant_entry({"type": "text", "text": "the needle is here"}),
+            ])
+
+            self.assertEqual(search("needle", projects_dir=projects_dir), [])
+
+            results = search(
+                "needle",
+                projects_dir=projects_dir,
+                include_assistant=True,
+            )
+
+            self.assertEqual([result.title for result in results], ["first question"])
+            self.assertEqual([result.match for result in results], ["the needle is here"])
+            self.assertEqual(
+                results[0].match_segments,
+                (
+                    HighlightSegment("the ", False),
+                    HighlightSegment("needle", True),
+                    HighlightSegment(" is here", False),
+                ),
+            )
+
+    def test_include_assistant_skips_tool_use_thinking_and_tool_results(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            projects_dir = Path(temp_dir)
+            write_entries(projects_dir, "-tmp", "one", [
+                {"type": "user", "message": {"content": "first question"}},
+                assistant_entry(
+                    {"type": "thinking", "thinking": "needle in thinking"},
+                    {"type": "tool_use", "name": "Bash", "input": {"command": "needle"}},
+                ),
+                {"type": "user", "message": {"content": [
+                    {"type": "tool_result", "content": "needle in tool output"},
+                ]}},
+                {"type": "system", "content": "needle in system metadata"},
+            ])
+
+            self.assertEqual(
+                search("needle", projects_dir=projects_dir, include_assistant=True),
+                [],
+            )
+
+    def test_include_assistant_prefers_the_earliest_match(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            projects_dir = Path(temp_dir)
+            write_entries(projects_dir, "-tmp", "one", [
+                {"type": "user", "message": {"content": "first question"}},
+                assistant_entry({"type": "text", "text": "assistant needle"}),
+                {"type": "user", "message": {"content": "user needle"}},
+            ])
+
+            results = search(
+                "needle",
+                projects_dir=projects_dir,
+                include_assistant=True,
+            )
+
+            self.assertEqual(results[0].match, "assistant needle")
 
     def test_reports_missing_projects_directory(self):
         with tempfile.TemporaryDirectory() as temp_dir:

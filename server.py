@@ -7,6 +7,11 @@ from flask import Flask, jsonify, render_template, request
 from claude_search import InvalidSearchTerm, ProjectsDirectoryNotFound, search
 
 
+def is_enabled(value):
+    """Return whether a query-string flag reads as switched on."""
+    return value.lower() in {"true", "1", "on"}
+
+
 def serialize_result(result):
     """Convert a search result into the public JSON response shape."""
     return {
@@ -41,17 +46,15 @@ def create_app(projects_dir=None):
     def api_search():
         term = request.args.get("term", "")
         path = request.args.get("path", "")
-        case_sensitive = request.args.get("case_sensitive", "false").lower() in {
-            "true",
-            "1",
-            "on",
-        }
+        case_sensitive = is_enabled(request.args.get("case_sensitive", "false"))
+        include_assistant = is_enabled(request.args.get("include_assistant", "false"))
         try:
             results = search(
                 term,
                 case_sensitive=case_sensitive,
                 projects_dir=app.config["PROJECTS_DIR"],
                 path_prefix=path,
+                include_assistant=include_assistant,
             )
         except InvalidSearchTerm as error:
             return jsonify({
@@ -76,6 +79,7 @@ def create_app(projects_dir=None):
             "term": term,
             "path": path,
             "case_sensitive": case_sensitive,
+            "include_assistant": include_assistant,
             "results": [serialize_result(result) for result in results],
         })
 
