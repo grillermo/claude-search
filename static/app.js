@@ -16,8 +16,10 @@ const resultContent = document.querySelector("#result-content");
 const relativeDate = document.querySelector("#result-relative-date");
 const projectPath = document.querySelector("#result-project-path");
 const title = document.querySelector("#result-title");
+const titleDate = document.querySelector("#result-title-date");
 const matchingMessageContainer = document.querySelector("#matching-message-container");
 const matchingMessage = document.querySelector("#matching-message");
+const matchingMessageDate = document.querySelector("#matching-message-date");
 const resumeCommand = document.querySelector("#resume-command");
 const resumeCommandText = document.querySelector("#resume-command-text");
 const copyCommand = document.querySelector("#copy-command");
@@ -47,6 +49,11 @@ function appendSegments(container, segments) {
 function renderSegments(container, segments, fallbackText) {
   container.replaceChildren();
   appendSegments(container, segments || [{ text: fallbackText, highlighted: false }]);
+}
+
+function renderDate(container, value) {
+  replaceWithText(container, value);
+  container.classList.toggle("hidden", !value);
 }
 
 function setStatus(message) {
@@ -85,13 +92,16 @@ function showResult(index) {
   replaceWithText(relativeDate, result.relative_date);
   replaceWithText(projectPath, result.cwd);
   renderSegments(title, result.title_segments, result.title);
+  renderDate(titleDate, result.title_date);
 
   const hasSeparateMatch = result.match !== result.title;
   matchingMessageContainer.classList.toggle("hidden", !hasSeparateMatch);
   if (hasSeparateMatch) {
     renderSegments(matchingMessage, result.match_segments, result.match);
+    renderDate(matchingMessageDate, result.match_date);
   } else {
     matchingMessage.replaceChildren();
+    renderDate(matchingMessageDate, "");
   }
 
   replaceWithText(resumeCommandText, result.resume_command);

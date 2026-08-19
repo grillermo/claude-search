@@ -21,6 +21,8 @@ def serialize_result(result):
         "title": result.title,
         "match": result.match,
         "relative_date": result.relative_date,
+        "title_date": result.title_date,
+        "match_date": result.match_date,
         "resume_command": result.resume_command,
         "title_segments": [
             {"text": segment.text, "highlighted": segment.highlighted}

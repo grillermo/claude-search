@@ -10,6 +10,7 @@
   <body class="min-h-screen bg-slate-950 text-slate-100">
     <div class="flex h-screen flex-col">
       <header class="border-b border-slate-800 bg-slate-900 px-4 py-4 sm:px-6">
+        <h1 class="sr-only">Claude history search</h1>
         <form id="search-form" class="mx-auto flex max-w-5xl flex-wrap items-end gap-3">
           <label class="min-w-0 flex-1 text-sm font-medium text-slate-200" for="search-term">
             Search Claude history
@@ -55,9 +56,18 @@
               <time id="result-relative-date"></time>
               <p id="result-project-path" class="break-all"></p>
             </div>
-            <h1 id="result-title" class="whitespace-pre-wrap break-words text-2xl font-semibold text-white"></h1>
+            <section class="space-y-2">
+              <div class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                <h2 class="text-sm font-medium uppercase tracking-wide text-slate-400">Conversation start</h2>
+                <time id="result-title-date" class="text-sm text-slate-400"></time>
+              </div>
+              <p id="result-title" class="whitespace-pre-wrap break-words text-lg font-semibold text-white"></p>
+            </section>
             <section id="matching-message-container" class="space-y-2">
-              <h2 class="text-sm font-medium uppercase tracking-wide text-slate-400">Matching message</h2>
+              <div class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                <h2 class="text-sm font-medium uppercase tracking-wide text-slate-400">Matching message</h2>
+                <time id="matching-message-date" class="text-sm text-slate-400"></time>
+              </div>
               <p id="matching-message" class="whitespace-pre-wrap break-words text-slate-200"></p>
             </section>
           </article>

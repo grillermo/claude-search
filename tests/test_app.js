@@ -110,8 +110,10 @@ const elementIds = [
   "result-relative-date",
   "result-project-path",
   "result-title",
+  "result-title-date",
   "matching-message-container",
   "matching-message",
+  "matching-message-date",
   "resume-command",
   "resume-command-text",
   "copy-command",
@@ -124,6 +126,8 @@ const elementIds = [
 function makeResult(title, match = title) {
   return {
     relative_date: "just now",
+    title_date: "2 hours ago",
+    match_date: "1 hour ago",
     cwd: "/tmp/project",
     title,
     match,
@@ -300,6 +304,29 @@ test("result rendering preserves text as nodes and highlights only marked segmen
     "<img src=x onerror=alert(1)>",
   );
   assert.equal(elements["result-title"].children[1].children[0].data, "needle");
+});
+
+test("message ages render per section and hide when a message has no timestamp", async () => {
+  const withDates = makeResult("start", "match");
+  const withoutDates = makeResult("undated", "undated");
+  withoutDates.title_date = "";
+  const app = loadApp({
+    fetch: async () => makeResponse([withDates, withoutDates]),
+  });
+  const { elements } = app;
+
+  elements["search-term"].value = "term";
+  await elements["search-form"].dispatch("submit");
+
+  assert.equal(elements["result-title-date"].textContent, "2 hours ago");
+  assert.equal(elements["result-title-date"].classList.contains("hidden"), false);
+  assert.equal(elements["matching-message-date"].textContent, "1 hour ago");
+
+  await elements["next-result"].dispatch("click");
+
+  assert.equal(elements["result-title-date"].textContent, "");
+  assert.equal(elements["result-title-date"].classList.contains("hidden"), true);
+  assert.equal(elements["matching-message-date"].classList.contains("hidden"), true);
 });
 
 test("focus, navigation bounds, keyboard navigation, and clipboard fallback work", async () => {

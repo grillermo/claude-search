@@ -6,6 +6,7 @@ import re
 import shlex
 import time
 from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
 
 
@@ -41,9 +42,27 @@ class SearchResult:
     resume_command: str
     title_segments: tuple[HighlightSegment, ...]
     match_segments: tuple[HighlightSegment, ...]
+    title_date: str
+    match_date: str
 
 
 SYSTEM_REMINDER = re.compile(r"<system-reminder>.*?</system-reminder>", re.DOTALL)
+COMMAND_NAME = re.compile(r"<command-name>(.*?)</command-name>", re.DOTALL)
+COMMAND_ARGS = re.compile(r"<command-args>(.*?)</command-args>", re.DOTALL)
+
+
+def command_text(text):
+    """Render a slash-command envelope as the command line the user typed.
+
+    Transcripts store slash commands as `<command-name>`/`<command-message>`/
+    `<command-args>` tags; anything else is returned unchanged.
+    """
+    name = COMMAND_NAME.search(text)
+    if name is None:
+        return text
+    args = COMMAND_ARGS.search(text)
+    parts = [name.group(1).strip(), args.group(1).strip() if args else ""]
+    return " ".join(part for part in parts if part)
 
 
 def dir_to_path(dirname):
@@ -68,6 +87,13 @@ def time_ago(age_seconds):
             count = int(age_seconds // seconds)
             return f"{count} {name}{'' if count == 1 else 's'} ago"
     return "just now"
+
+
+def relative_time(timestamp, now):
+    """Return a message's age, or an empty string when it has no timestamp."""
+    if timestamp is None:
+        return ""
+    return time_ago(max(now - timestamp, 0))
 
 
 def compile_pattern(term, case_sensitive=False):
@@ -103,11 +129,23 @@ def highlight_segments(text, pattern):
     return tuple(segments)
 
 
+def message_time(obj):
+    """Return a transcript entry's epoch timestamp, or None when unusable."""
+    stamp = obj.get("timestamp")
+    if not isinstance(stamp, str):
+        return None
+    try:
+        return datetime.fromisoformat(stamp.replace("Z", "+00:00")).timestamp()
+    except ValueError:
+        return None
+
+
 def message_texts(jsonl_path, include_assistant=False):
-    """Yield (role, text) pairs for message prose, in transcript order.
+    """Yield (role, text, timestamp) triples for message prose, in order.
 
     User text is what the user actually typed; assistant text is Claude's
     replies. Tool calls, tool results, and thinking blocks are never yielded.
+    The timestamp is epoch seconds, or None when the entry has none.
     """
     roles = {"user", "assistant"} if include_assistant else {"user"}
     try:
@@ -134,34 +172,39 @@ def message_texts(jsonl_path, include_assistant=False):
                     ]
                 else:
                     continue
+                timestamp = message_time(obj)
                 for block in blocks:
-                    text = SYSTEM_REMINDER.sub("", block).strip()
+                    text = command_text(SYSTEM_REMINDER.sub("", block).strip())
                     if text and not text.startswith("<local-command"):
-                        yield role, text
+                        yield role, text, timestamp
     except (IOError, OSError):
         pass
 
 
 def user_texts(jsonl_path):
     """Yield text the user actually typed, in order."""
-    for _role, text in message_texts(jsonl_path):
+    for _role, text, _timestamp in message_texts(jsonl_path):
         yield text
 
 
 def scan_file(jsonl_path, pattern, include_assistant=False):
-    """Return the first user message and the first matching message."""
+    """Return the first user message and the first matching message with times."""
     title = None
+    title_time = None
     match = None
-    for role, text in message_texts(jsonl_path, include_assistant=include_assistant):
+    match_time = None
+    for role, text, timestamp in message_texts(
+        jsonl_path, include_assistant=include_assistant
+    ):
         if title is None and role == "user":
-            title = text
+            title, title_time = text, timestamp
         if match is None and pattern.search(text):
-            match = text
+            match, match_time = text, timestamp
         if title is not None and match is not None:
             break
     if title is None:
-        title = match
-    return title, match
+        title, title_time = match, match_time
+    return title, title_time, match, match_time
 
 
 def transcript_cwd(jsonl_path):
@@ -222,7 +265,7 @@ def search(
                 cwd = decoded_cwd
             if path_prefix and not path_matches_prefix(cwd, path_prefix):
                 continue
-            title, match = scan_file(
+            title, title_time, match, match_time = scan_file(
                 jsonl_file, pattern, include_assistant=include_assistant
             )
             if match is not None:
@@ -232,11 +275,15 @@ def search(
                     jsonl_file.stem,
                     title,
                     match,
+                    title_time,
+                    match_time,
                 ))
 
     current_time = time.time() if now is None else now
     results = []
-    for mtime, cwd, conv_id, title, match in sorted(matches, reverse=True):
+    for (
+        mtime, cwd, conv_id, title, match, title_time, match_time
+    ) in sorted(matches, reverse=True):
         results.append(SearchResult(
             mtime=mtime,
             cwd=cwd,
@@ -247,5 +294,7 @@ def search(
             resume_command=f"cd {shlex.quote(cwd)} && claude --resume {conv_id}",
             title_segments=highlight_segments(title, pattern),
             match_segments=highlight_segments(match, pattern),
+            title_date=relative_time(title_time, current_time),
+            match_date=relative_time(match_time, current_time),
         ))
     return results

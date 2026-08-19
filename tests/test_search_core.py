@@ -2,6 +2,7 @@ import json
 import os
 import tempfile
 import unittest
+from datetime import datetime
 from pathlib import Path
 
 from claude_search import (
@@ -103,6 +104,71 @@ class SearchCoreTests(unittest.TestCase):
             self.assertNotIn(
                 "<", "".join(segment.text for segment in result.title_segments)
             )
+
+    def test_reports_the_age_of_the_first_and_matching_messages(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            projects_dir = Path(temp_dir)
+            write_entries(projects_dir, "-tmp", "one", [
+                {
+                    "type": "user",
+                    "timestamp": "2026-08-19T10:00:00.000Z",
+                    "message": {"content": "opening question"},
+                },
+                {
+                    "type": "user",
+                    "timestamp": "2026-08-19T12:00:00.000Z",
+                    "message": {"content": "needle here"},
+                },
+            ])
+            now = datetime.fromisoformat("2026-08-19T13:00:00+00:00").timestamp()
+
+            result = search("needle", projects_dir=projects_dir, now=now)[0]
+
+            self.assertEqual(result.title_date, "3 hours ago")
+            self.assertEqual(result.match_date, "1 hour ago")
+
+    def test_messages_without_timestamps_report_no_age(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            projects_dir = Path(temp_dir)
+            write_transcript(projects_dir, "-tmp", "one", ["needle"])
+
+            result = search("needle", projects_dir=projects_dir)[0]
+
+            self.assertEqual(result.title_date, "")
+            self.assertEqual(result.match_date, "")
+
+    def test_renders_slash_commands_as_the_typed_command_line(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            projects_dir = Path(temp_dir)
+            write_transcript(projects_dir, "-tmp", "one", [
+                "<command-message>loop</command-message>\n"
+                "<command-name>/loop</command-name>\n"
+                "<command-args>every 15 mins</command-args>",
+            ])
+
+            result = search("/loop", projects_dir=projects_dir, now=0)[0]
+
+            self.assertEqual(result.title, "/loop every 15 mins")
+            self.assertEqual(
+                result.title_segments,
+                (
+                    HighlightSegment("/loop", True),
+                    HighlightSegment(" every 15 mins", False),
+                ),
+            )
+
+    def test_renders_argument_free_slash_commands(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            projects_dir = Path(temp_dir)
+            write_transcript(projects_dir, "-tmp", "one", [
+                "<command-name>/clear</command-name>\n"
+                "            <command-message>clear</command-message>\n"
+                "            <command-args></command-args>",
+            ])
+
+            result = search("clear", projects_dir=projects_dir, now=0)[0]
+
+            self.assertEqual(result.title, "/clear")
 
     def test_rejects_empty_oversized_and_invalid_terms(self):
         with tempfile.TemporaryDirectory() as temp_dir:
